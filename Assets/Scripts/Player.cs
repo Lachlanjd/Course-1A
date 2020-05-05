@@ -6,12 +6,17 @@ public class Player : MonoBehaviour
 {
     [SerializeField]
     private float _speed = 8.0f;
-    private float _speedBoostMultiplier = 2;
+    private float _speedBoostMultiplier = 1.5f;
+    private float _afterburner = 1.2f;
+    private int _shieldStrength;
+    private int _ammoCount = 15;
     
     [SerializeField]
     private GameObject _laserPrefab;
     [SerializeField]
     private GameObject _tripleShot;
+    [SerializeField]
+    private GameObject _missilePrefab;
     [SerializeField]
     private GameObject _shield;
     [SerializeField]
@@ -19,7 +24,7 @@ public class Player : MonoBehaviour
     [SerializeField]
     private GameObject _explosionPrefab;
 
-    private Vector3 offset = new Vector3(0, 0.86f, 0);
+    private Vector3 offset = new Vector3(0, 1f, 0);
     [SerializeField]
     private float _fireRate = 0.2f;
     private float _nextFire = 0.0f;
@@ -29,35 +34,43 @@ public class Player : MonoBehaviour
     private int _score;
     private SpawnManager _spawnManager;
     private UIManager _uiManager;
+    private CameraController _camera;
     [SerializeField]
     private AudioClip _laserSoundClip;    
     [SerializeField]
     private AudioClip _powerUpCollectionSoundClip;
+    [SerializeField]
+    private AudioClip _missileSoundClip;
     private AudioSource _audioSource;
-    
-    private Vector3 startPos = new Vector3(0, 0, 0);
+    [SerializeField]
+    private Vector3 startPos = new Vector3(0, -4.5f, 0);
+    [SerializeField]
+    private float _afterBurnerFuel;
     
     private bool _firePowerupActive = false;
     private bool _speedBoostActive = false;
     private bool _shieldPowerupActive = false;
+    private bool _secondaryFireActive = false;
     
     // Start is called before the first frame update
     void Start()
-    {        
+    {
+        _afterBurnerFuel = 20f;
         _health = 3;
-        transform.position = startPos;      
+        transform.position = new Vector3(0,-4.5f,0);      
         _spawnManager = GameObject.FindWithTag("SpawnManager").GetComponent<SpawnManager>();
         _uiManager = GameObject.Find("Canvas").GetComponent<UIManager>();
         _audioSource = this.GetComponent<AudioSource>();
+        _camera = GameObject.Find("Main Camera").GetComponent<CameraController>();
+        if(_camera == null)
+        {
+            Debug.LogError("camera on Player script is null");
+        }
         if(_audioSource == null)
         {
             Debug.LogError("_audiosource on player.cs is null");
         }
-        /*else
-        {
-            _audioSource.clip = _laserSoundClip;
-        }*/
-
+        
         if(_uiManager == null)
         {
             Debug.Log("UIManager not found!");
@@ -71,24 +84,43 @@ public class Player : MonoBehaviour
 
         if (Input.GetKeyDown(KeyCode.Space) && Time.time > _nextFire)
         {
-            FireLaser();
+            if(_secondaryFireActive == true)
+            {
+                HomingMissile();
+            }
+            else if (_ammoCount > 0)
+            {
+                FireLaser();
+            }            
         }    
     }
 
     void FireLaser()
     {
+        _ammoCount--;
+        _uiManager.UpdateAmmoCount(_ammoCount);
+
         _audioSource.clip = _laserSoundClip;
         _nextFire = Time.time + _fireRate;
 
         if (_firePowerupActive == true)
-        {            
-            Instantiate(_tripleShot, transform.position, Quaternion.identity);            
+        {
+            Instantiate(_tripleShot, transform.localPosition, Quaternion.identity);
         }
         else
-        {           
-            Instantiate(_laserPrefab, transform.position + offset, Quaternion.identity);
+        {
+            Instantiate(_laserPrefab, transform.localPosition + offset, Quaternion.identity);
         }
         _audioSource.Play();
+    }
+
+    void HomingMissile()
+    {
+        Vector3 StartPos = transform.localPosition + offset;
+        _audioSource.clip = _missileSoundClip;
+        _nextFire = Time.time + _fireRate;
+        Instantiate(_missilePrefab, StartPos, Quaternion.identity);
+        _audioSource.Play();        
     }
 
     void CalculateMovement()
@@ -101,6 +133,17 @@ public class Player : MonoBehaviour
 
         if (_speedBoostActive == false)
         {
+            if (Input.GetKey(KeyCode.LeftShift) && _afterBurnerFuel > 1.2)
+            {
+                _afterBurnerFuel -= 6f * Time.deltaTime;
+                transform.Translate(direction * _speed * _afterburner * Time.deltaTime);
+                _uiManager.AfterburnerFuel(_afterBurnerFuel);
+            }
+            if (_afterBurnerFuel < 20 && !Input.GetKey(KeyCode.LeftShift))
+            {
+                _afterBurnerFuel += 4f * Time.deltaTime;
+                _uiManager.AfterburnerFuel(_afterBurnerFuel);
+            }
             transform.Translate(direction * _speed * Time.deltaTime);
         }
         else
@@ -108,7 +151,7 @@ public class Player : MonoBehaviour
             transform.Translate(direction * _speed * _speedBoostMultiplier * Time.deltaTime);            
         }        
                 
-        transform.position = new Vector3(transform.position.x, Mathf.Clamp(transform.position.y, -1.4f, 6.5f), 0);
+        transform.position = new Vector3(transform.position.x, Mathf.Clamp(transform.position.y, -4.5f, 4.2f), 0);
 
         if (transform.position.x >= 11.3f)
         {
@@ -124,12 +167,28 @@ public class Player : MonoBehaviour
     {
         if (_shieldPowerupActive == true)
         {
-            _shieldPowerupActive = false;
-            _shield.SetActive(false);
+            _shieldStrength--;
+            switch (_shieldStrength)
+            {
+                case 2:
+                    _shield.GetComponent<SpriteRenderer>().material.color = Color.grey;
+                    break;
+                case 1:
+                    _shield.GetComponent<SpriteRenderer>().material.color = Color.green;
+                    break;
+            }
+
+            if(_shieldStrength == 0)
+            {
+                _shieldPowerupActive = false;
+                _shield.SetActive(false);
+            }
+            
             return;
         }
         else
         {
+            StartCoroutine(_camera.Shake());
             _health--;
             _uiManager.UpdateLives(_health);
 
@@ -168,9 +227,6 @@ public class Player : MonoBehaviour
         
     public void TripleShotActive()
     {
-        //_audioSource.clip = _powerUpCollectionSoundClip;
-        //_audioSource.Play();
-
         _firePowerupActive = true;
         StartCoroutine("TripleShotPowerDownRoutine");        
     }
@@ -183,9 +239,6 @@ public class Player : MonoBehaviour
 
     public void SpeedBoostActive()
     {
-        //_audioSource.clip = _powerUpCollectionSoundClip;
-        //_audioSource.Play();
-
         _speedBoostActive = true;
         StartCoroutine("SpeedBoostPowerDownRoutine");
     }
@@ -196,13 +249,47 @@ public class Player : MonoBehaviour
         _speedBoostActive = false;
     }
 
+    public void SecondaryFireActive()
+    {
+        _secondaryFireActive = true;        
+        StartCoroutine("SecondaryFireCoolDownRoutine");
+    }
+
+    IEnumerator SecondaryFireCoolDownRoutine()
+    {
+        yield return new WaitForSeconds(5.0f);
+        _secondaryFireActive = false;
+    }
+
     public void ShieldActive()
     {
-        //_audioSource.clip = _powerUpCollectionSoundClip;
-        //_audioSource.Play();
-
+        _shieldStrength = 3;
+        
         _shieldPowerupActive = true;
         _shield.SetActive(true);
+        _shield.GetComponent<SpriteRenderer>().material.color = Color.white;
+    }
+
+    public void HealthBoost()
+    {
+        if (_health < 3)
+        {
+            _health++;
+            if (_playerDamage[0].activeSelf)
+            {
+                _playerDamage[0].SetActive(false);
+            }
+            else if (_playerDamage[1].activeSelf)
+            {
+                _playerDamage[1].SetActive(false);
+            }
+        }
+    }
+
+    public void AmmoRefill()
+    {
+        _ammoCount += 10;
+        _uiManager.UpdateAmmoCount(_ammoCount);
     }
 
     public void AddScore(int points)

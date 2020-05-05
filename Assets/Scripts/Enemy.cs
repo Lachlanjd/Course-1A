@@ -20,7 +20,11 @@ public class Enemy : MonoBehaviour
     private Vector3 _offset = new Vector3(0, -0.6f, 0);
     private float _nextFire = -1.0f;
     private float _fireRate = 3.0f;
-    
+    private bool _enemyDeath;
+    [SerializeField]
+    private GameObject LThruster;
+    [SerializeField]
+    private GameObject RThruster;
 
     private void Start()
     {
@@ -44,7 +48,9 @@ public class Enemy : MonoBehaviour
         {
             Debug.LogError("_audioSource on enemy.cs is null");
         }
-        
+
+        _enemyDeath = false;
+
     }
 
     // Update is called once per frame
@@ -52,7 +58,7 @@ public class Enemy : MonoBehaviour
     {
         CalculateMovement();
 
-        if (Time.time > _nextFire)
+        if (Time.time > _nextFire && _enemyDeath == false)
         {
             _fireRate = Random.Range(3f, 7f);
             _nextFire = Time.time + _fireRate;
@@ -72,10 +78,10 @@ public class Enemy : MonoBehaviour
     {
         transform.Translate(Vector3.down * _speed * Time.deltaTime);
 
-        if (transform.position.y < -10.8f)
+        if (transform.position.y < -8.0f)
         {
             var randomX = Random.Range(-9f, 9f);
-            transform.position = new Vector3(randomX, 9.6f, 0);
+            transform.position = new Vector3(randomX, 8f, 0);
         }
     }
 
@@ -92,12 +98,14 @@ public class Enemy : MonoBehaviour
             
             _anim.SetTrigger("OnEnemyDeath");
             this._collider.enabled = false;
+            StartCoroutine(EnemyThrusterDeath());
+            _enemyDeath = true;
             _audioSource.clip = _explosionSoundClip;
             _audioSource.Play();
             _speed = 2f;
             Destroy(this.gameObject, 2.6f);
         }
-        else if (collision.tag == "Laser")
+        else if (collision.tag == "Laser" || collision.tag == "Missile")
         {
             Destroy(collision.gameObject);
             
@@ -108,10 +116,19 @@ public class Enemy : MonoBehaviour
             
             _anim.SetTrigger("OnEnemyDeath");
             this._collider.enabled = false;
+            StartCoroutine(EnemyThrusterDeath());
+            _enemyDeath = true;
             _audioSource.clip = _explosionSoundClip;
             _audioSource.Play();
             _speed = 2.0f;
             Destroy(this.gameObject, 2.6f);
         }
-    }    
+    }
+
+    IEnumerator EnemyThrusterDeath()
+    {
+        yield return new WaitForSeconds(0.3f);
+        LThruster.SetActive(false);
+        RThruster.SetActive(false);
+    }
 }

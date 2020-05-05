@@ -21,18 +21,17 @@ public class Powerup : MonoBehaviour
     {
         transform.Translate(Vector3.down * _speed * Time.deltaTime);
 
-        if (transform.position.y < -2.9f)
+        if (transform.position.y < -8f)
         {
             Destroy(this.gameObject);
         }
     }
 
     private void OnTriggerEnter2D(Collider2D collision)
-    {
-        AudioSource.PlayClipAtPoint(_powerupSoundClip, new Vector3(0, 3, -8));
-
+    { 
         if (collision.tag == "Player")
         {
+            AudioSource.PlayClipAtPoint(_powerupSoundClip, new Vector3(0, 3, -8));
             Player player = collision.GetComponent<Player>();
 
             if(player != null)
@@ -48,11 +47,21 @@ public class Powerup : MonoBehaviour
                     case 2:
                         player.ShieldActive();
                         break;
+                    case 3:
+                        player.HealthBoost();
+                        break;
+                    case 4:
+                        player.AmmoRefill();
+                        break;
+                    case 5:                        
+                        player.SecondaryFireActive();                                               
+                        break;                        
                     default:
                         Debug.Log("Default value");
                         break;
                 }
             }
+
             Destroy(this.gameObject);
         }
     }

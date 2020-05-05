@@ -8,6 +8,8 @@ public class UIManager : MonoBehaviour
     [SerializeField]
     private Text _scoreText;
     [SerializeField]
+    private Text _ammoCount;
+    [SerializeField]
     private Image _livesImg;
     [SerializeField]
     private Sprite[] _livesSprites;
@@ -19,15 +21,23 @@ public class UIManager : MonoBehaviour
     private Text _restartText;
     [SerializeField]
     private GameManager _gameManager;
+    [SerializeField]    
+    public Slider _slider;
 
     
     // Start is called before the first frame update
     void Start()
     {
+        _slider = GameObject.Find("Afterburner_Bar").GetComponent<Slider>();
+        if(_slider == null)
+        {
+            Debug.LogError("_slider on UIManager is null");
+        }
         _gameManager = GameObject.Find("Game_Manager").GetComponent<GameManager>();
         _restartText.gameObject.SetActive(false);
         _gameOverText.gameObject.SetActive(false);
         _scoreText.text = "Score: " + 0;
+        _ammoCount.text = "Ammo: " + 15;
     }        
 
     public void UpdateScore(int playerScore)
@@ -67,5 +77,17 @@ public class UIManager : MonoBehaviour
             _gameOverText.gameObject.SetActive(false);
             yield return new WaitForSeconds(0.4f);
         }        
-    }    
+    }
+
+    public void UpdateAmmoCount(int ammoCount)
+    {
+        _ammoCount.text = "Ammo: " + ammoCount;
+    }
+
+    public void AfterburnerFuel(float value)
+    {
+        _slider.value = value;
+    }
+
+        
 }

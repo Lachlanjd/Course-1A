@@ -31,7 +31,7 @@ public class Asteroid : MonoBehaviour
 
     private void OnTriggerEnter2D(Collider2D other)
     {        
-        if (other.tag == "Laser")
+        if (other.tag == "Laser" || other.tag == "Missile")
         {            
             GameObject _explosionClone = Instantiate(_explosionPrefab, transform.position, Quaternion.identity);
             

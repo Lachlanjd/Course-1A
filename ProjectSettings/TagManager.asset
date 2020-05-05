@@ -10,6 +10,8 @@ TagManager:
   - SpawnManager
   - Canvas
   - Game_Over_Text
+  - Missile
+  - Shield
   layers:
   - Default
   - TransparentFX
